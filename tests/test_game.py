@@ -281,3 +281,57 @@ def test_game_speedometer_rendering_and_state_resets():
     assert game.ball.current_speed > initial_speed
     game.restart()
     assert abs(game.ball.current_speed - initial_speed) < 1e-5
+
+
+def test_paddle_and_wall_collisions_and_sounds(monkeypatch):
+    """Verify paddle1 and paddle2 collisions and wall collisions trigger correct sounds."""
+    game = PongGame(headless=True, sound_enabled=True)
+    game.start_game()
+
+    sound_calls = []
+    monkeypatch.setattr(game.sound, "play_bounce", lambda: sound_calls.append("bounce"))
+    monkeypatch.setattr(game.sound, "play_wall", lambda: sound_calls.append("wall"))
+
+    # 1. Paddle 1 collision (moving left toward left paddle)
+    game.ball.x = game.paddle1.rect.right + 2.0
+    game.ball.y = game.paddle1.y + 10
+    game.ball.speed_x = -5.0
+    game.ball.speed_y = 0.0
+    sound_calls.clear()
+    game.update()
+    assert "bounce" in sound_calls
+    assert "wall" not in sound_calls
+    assert game.ball.speed_x > 0
+
+    # 2. Paddle 2 collision (moving right toward right paddle)
+    game.ball.x = game.paddle2.rect.left - game.ball.size - 2.0
+    game.ball.y = game.paddle2.y + 10
+    game.ball.speed_x = 5.0
+    game.ball.speed_y = 0.0
+    sound_calls.clear()
+    game.update()
+    assert "bounce" in sound_calls
+    assert "wall" not in sound_calls
+    assert game.ball.speed_x < 0
+
+    # 3. Top wall collision
+    game.ball.x = game.screen_width / 2.0
+    game.ball.y = 2.0
+    game.ball.speed_x = 0.0
+    game.ball.speed_y = -5.0
+    sound_calls.clear()
+    game.update()
+    assert "wall" in sound_calls
+    assert "bounce" not in sound_calls
+    assert game.ball.speed_y > 0
+
+    # 4. Bottom wall collision
+    game.ball.x = game.screen_width / 2.0
+    game.ball.y = game.screen_height - game.ball.size - 2.0
+    game.ball.speed_x = 0.0
+    game.ball.speed_y = 5.0
+    sound_calls.clear()
+    game.update()
+    assert "wall" in sound_calls
+    assert "bounce" not in sound_calls
+    assert game.ball.speed_y < 0
